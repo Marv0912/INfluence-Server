@@ -7,6 +7,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
+const Company = require("../models/Company");
+const Influencer = require("../models/Influencer");
 
 const isAuthenticated = require('../middleware/isAuthenticated')
 
@@ -15,11 +17,23 @@ const saltRounds = 10;
 // POST  /auth/signup
 // ...
 router.post("/signup", (req, res, next) => {
-    const { email, password, username } = req.body;
+    const { 
+        email, name, password, username, role,
+        companyName,    // Company-specific
+        industry,       // Company-specific
+        location,       // Company-specific
+        contactEmail,   // Company-specific
+        contactPhone,   // Company-specific
+        contactAddress, // Company-specific
+        bio,            // Influencer-specific
+        website,        // Influencer-specific
+        instagramUrl, // Influencer-specific
+        followersCount 
+    } = req.body;
 
     // Check if the email or password or name is provided as an empty string
-    if (!email || !password) {
-        res.status(400).json({ message: "Provide email orpassword" });
+    if (!email || !password || !role) {
+        res.status(400).json({ message: "Provide email or password" });
         return;
     }
 
@@ -52,19 +66,49 @@ router.post("/signup", (req, res, next) => {
 
             // Create a new user in the database
             // We return a pending promise, which allows us to chain another `then`
-            User.create({ email, password: hashedPassword, username })
+            User.create({ email, name, password: hashedPassword, username, role })
                 .then((createdUser) => {
                     // Deconstruct the newly created user object to omit the password
                     // We should never expose passwords publicly
-                    const { email, username, photo, _id } = createdUser;
+                    const { email, name, username, photo, _id, role } = createdUser;
 
                     // Create a new object that doesn't expose the password
-                    const payload = { email, username, photo, _id };
+                    const payload = { email, name, username, photo, _id, role };
 
                     const authToken = jwt.sign(payload, process.env.SECRET, {
                         algorithm: "HS256",
                         expiresIn: "6h",
                     });
+
+                    if (role === "influencer") {
+                        // Create an influencer model and associate it with the user
+                        Influencer.create(
+                            {
+                                user: createdUser._id,
+                                bio,            // Influencer-specific
+                                website,        // Influencer-specific
+                                instagramUrl, // Influencer-specific
+                                followersCount,
+                                location,
+                                category
+                            });
+                    } else {
+                        if (!companyName || companyName.trim() === "") {
+                            res.status(400).json({ message: "Company name is required." });
+                            return;
+                        }
+                        // Create a company model and associate it with the user
+                        Company.create(
+                            {
+                                user: createdUser._id,
+                                companyName,    // Company-specific
+                                industry,       // Company-specific
+                                location,       // Company-specific
+                                contactEmail,   // Company-specific
+                                contactPhone,   // Company-specific
+                                contactAddress, // Company-specific
+                            });
+                    }
 
                     // Send the token as the response
                     res.status(200).json({ authToken });
@@ -112,10 +156,10 @@ router.post("/login", (req, res, next) => {
 
             if (passwordCorrect) {
                 // Deconstruct the user object to omit the password
-                const { _id, email, username, photo } = foundUser;
+                const { _id, email, username, photo, role } = foundUser;
 
                 // Create an object that will be set as the token payload
-                const payload = { _id, email, username, photo };
+                const payload = { _id, email, username, photo, role };
 
                 // Create and sign the token
                 const authToken = jwt.sign(payload, process.env.SECRET, {
