@@ -2,7 +2,7 @@ const { model, Schema } = require("mongoose");
 
 const userSchema = new Schema(
     {
-        name: String,
+        name:  { type: String, required: true },
         username: { type: String, required: true, unique: true },
         email: { type: String, required: true, unique: true },
         password: { type: String, required: true },
@@ -10,11 +10,6 @@ const userSchema = new Schema(
             type: String,
             enum: ['company', 'influencer'],
             required: true
-        },
-        instagramUrl: String,
-        profile: {
-            type: mongoose.Schema.Types.ObjectId,
-            refPath: 'role'
         },
         photo: {
             type: String,
