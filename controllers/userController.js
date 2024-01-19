@@ -7,57 +7,68 @@ exports.getUserProfile = (req, res, next) => {
     User.findById(req.params.userId).select("-password")
         .then((user) => {
             if (!user) {
-                return res.status(404).json({ message: 'User not found' })
+                return res.status(404).json({ message: 'User not found' });
             }
             console.log('User Role:', user.role);
             let userData = { ...user.toObject() };
 
-            if (user.role === 'influencer') {
-                Influencer.findOne({ user: req.params.userId })
-                    .then((influencer) => {
-                        userData.influencer = influencer;
-                        console.log('Company Data:', influencer);
-                        res.status(200).json(userData);
-                    })
-                    .catch((error) => {
-                        console.error(error)
-                        res.status(500).json({ message: 'Internal Server Error' })
-                    })
-            } else if (user.role === 'company') {
-                Company.findOne({ user: req.params.userId })
-                    .then((company) => {
-                        userData.company = company
-                        console.log('Company Data:', company);
-                        res.status(200).json(userData)
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                        res.status(500).json({ message: 'Internal Server Error' })
-                    })
-            }
-        })
+            // Determine the role-specific model based on the user's role
+            let RoleModel = user.role === 'Influencer' ? Influencer : Company;
 
+            // Find the role-specific profile using the roleProfile ID
+            RoleModel.findById(user.roleProfile)
+                .then((roleProfile) => {
+                    if (!roleProfile) {
+                        return res.status(404).json({ message: 'Role profile not found' });
+                    }
+                    // Add the role-specific data to the userData object
+                    userData.roleData = roleProfile;
+                    res.status(200).json(userData);
+                })
+                .catch((error) => {
+                    console.error(error);
+                    res.status(500).json({ message: 'Internal Server Error' });
+                });
+        })
         .catch((error) => {
             console.error(error);
-            res.status(500).json({ message: 'Internal Server Error' })
-        })
-}
+            res.status(500).json({ message: 'Internal Server Error' });
+        });
+};
 
 exports.updateUserProfile = (req, res, next) => {
-    const updatedData = req.body;
+    const userId = req.params.userId;
+    const updatedUserData = req.body.user;
+    const updatedRoleData = req.body.roleData;
 
-    User.findByIdAndUpdate(req.params.userId, updatedData, { new: true })
+    // Update User model
+    User.findByIdAndUpdate(userId, updatedUserData, { new: true })
         .then((updatedUser) => {
             if (!updatedUser) {
-                return res.status(404).json({ message: 'User not found' })
+                return res.status(404).json({ message: 'User not found' });
             }
-            res.status(200).json({ message: 'User profile updated successfully', user: updatedUser })
+
+            // Determine the role-specific model
+            let RoleModel = updatedUser.role === 'Influencer' ? Influencer : Company;
+
+            // Update the role-specific data
+            return RoleModel.findByIdAndUpdate(updatedUser.roleProfile, updatedRoleData, { new: true })
+                .then(updatedRoleProfile => {
+                    if (!updatedRoleProfile) {
+                        throw new Error('Role-specific profile not found');
+                    }
+                    return res.status(200).json({
+                        message: 'Profile updated successfully',
+                        user: updatedUser,
+                        roleProfile: updatedRoleProfile
+                    });
+                });
         })
         .catch((error) => {
             console.error(error);
-            res.status(500).json({ message: 'Internal Server Error' })
-        })
-}
+            res.status(500).json({ message: 'Internal Server Error' });
+        });
+};
 exports.deleteUserProfile = (req, res, next) => {
     User.findByIdAndDelete(req.params.userId)
         .then((deletedUser) => {

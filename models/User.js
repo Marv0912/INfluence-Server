@@ -6,9 +6,13 @@ const userSchema = new Schema(
         username: { type: String, required: true, unique: true },
         email: { type: String, required: true, unique: true },
         password: { type: String, required: true },
+        roleProfile: {
+            type: Schema.Types.ObjectId,
+            refPath: 'role', 
+        },
         role: {
             type: String,
-            enum: ['company', 'influencer'],
+            enum: ['Company', 'Influencer'],
             required: true
         },
         photo: {

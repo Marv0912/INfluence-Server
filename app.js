@@ -2,6 +2,11 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+require('dotenv').config()
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+var emailRoutes = require('./routes/email');
+
 
 var cors = require('cors');
 var mongoose = require('mongoose');
@@ -10,6 +15,7 @@ var mongoose = require('mongoose');
 var usersRouter = require('./routes/users');
 var authRouter = require('./routes/auth')
 var influencerRouter = require('./routes/influencer')
+var companyRoutes = require('./routes/company')
 var app = express();
 
 app.use(logger('dev'));
@@ -35,6 +41,8 @@ app.use(
 app.use('/user', usersRouter);
 app.use('/auth', authRouter)
 app.use('/influencer', influencerRouter)
+app.use('/company', companyRoutes)
+app.use('/email', emailRoutes);
 
 mongoose
     .connect(process.env.MONGODB_URI)
